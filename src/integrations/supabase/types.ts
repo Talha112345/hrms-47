@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      attendance: {
+        Row: {
+          check_in: string | null
+          check_out: string | null
+          created_at: string | null
+          date: string
+          employee_id: string
+          id: string
+          notes: string | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          check_in?: string | null
+          check_out?: string | null
+          created_at?: string | null
+          date: string
+          employee_id: string
+          id?: string
+          notes?: string | null
+          status: string
+          updated_at?: string | null
+        }
+        Update: {
+          check_in?: string | null
+          check_out?: string | null
+          created_at?: string | null
+          date?: string
+          employee_id?: string
+          id?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       employees: {
         Row: {
           address: string
@@ -68,6 +104,48 @@ export type Database = {
           salary?: number
           status?: Database["public"]["Enums"]["employee_status"]
           updated_at?: string
+        }
+        Relationships: []
+      }
+      leave_requests: {
+        Row: {
+          approver_comments: string | null
+          created_at: string | null
+          employee_id: string
+          end_date: string
+          id: string
+          leave_type: string
+          number_of_days: number
+          reason: string
+          start_date: string
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          approver_comments?: string | null
+          created_at?: string | null
+          employee_id: string
+          end_date: string
+          id?: string
+          leave_type: string
+          number_of_days: number
+          reason: string
+          start_date: string
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          approver_comments?: string | null
+          created_at?: string | null
+          employee_id?: string
+          end_date?: string
+          id?: string
+          leave_type?: string
+          number_of_days?: number
+          reason?: string
+          start_date?: string
+          status?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
