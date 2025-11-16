@@ -97,7 +97,14 @@ const Dashboard = () => {
       if (error) throw error;
       
       if (data?.status === "success") {
-        setPayroll(data.data.payroll || []);
+        const payrollData = data.data.payroll || [];
+        setPayroll(payrollData);
+        
+        // Calculate total monthly payroll amount
+        const totalAmount = payrollData.reduce((sum: number, record: any) => 
+          sum + (Number(record.net_salary) || 0), 0
+        );
+        setStats(prev => ({ ...prev, monthlyPayroll: totalAmount }));
       }
     } catch (error) {
       console.error("Error fetching payroll:", error);
@@ -375,7 +382,7 @@ const Dashboard = () => {
             <TabsTrigger value="attendance">Attendance</TabsTrigger>
             <TabsTrigger value="payroll">Payroll</TabsTrigger>
             <TabsTrigger value="performance">Performance</TabsTrigger>
-            <TabsTrigger value="recruitment">Recruitment</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
           </TabsList>
 
           {/* Employees Tab */}
@@ -778,8 +785,19 @@ const Dashboard = () => {
                       <Input id="perfEmployeeId" name="employeeId" required />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="reviewerId">Reviewer ID</Label>
-                      <Input id="reviewerId" name="reviewerId" required />
+                      <Label htmlFor="reviewerId">Reviewer (Manager)</Label>
+                      <Select name="reviewerId" required>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select reviewer" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {employees.map((emp: any) => (
+                            <SelectItem key={emp.id} value={emp.employee_id}>
+                              {emp.first_name} {emp.last_name} - {emp.employee_id}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="reviewPeriod">Review Period</Label>
@@ -838,19 +856,245 @@ const Dashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* Recruitment Tab */}
-          <TabsContent value="recruitment" className="space-y-6">
+          {/* Analytics Tab */}
+          <TabsContent value="analytics" className="space-y-6">
+            {/* Key Metrics Overview */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Total Employees</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center justify-between">
+                    <div className="text-3xl font-bold">{stats.totalEmployees}</div>
+                    <Users className="h-8 w-8 text-primary" />
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Pending Leaves</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center justify-between">
+                    <div className="text-3xl font-bold text-warning">{stats.pendingLeaves}</div>
+                    <Calendar className="h-8 w-8 text-warning" />
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Today's Attendance</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center justify-between">
+                    <div className="text-3xl font-bold text-success">{stats.todayAttendance}</div>
+                    <Clock className="h-8 w-8 text-success" />
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Monthly Payroll</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center justify-between">
+                    <div className="text-3xl font-bold text-primary">
+                      ${stats.monthlyPayroll.toLocaleString()}
+                    </div>
+                    <DollarSign className="h-8 w-8 text-primary" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Department Distribution */}
             <Card>
               <CardHeader>
-                <CardTitle>Recruitment Pipeline</CardTitle>
-                <CardDescription>Track job openings and candidate applications</CardDescription>
+                <CardTitle>Employee Distribution by Department</CardTitle>
+                <CardDescription>Overview of workforce across departments</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-12">
-                  <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Recruitment Module</h3>
-                  <p className="text-muted-foreground mb-4">Manage job postings, track candidates, and schedule interviews</p>
-                  <Button variant="outline">Coming Soon</Button>
+                <div className="space-y-3">
+                  {['Engineering', 'HR', 'Finance', 'Marketing', 'Operations', 'Sales', 'IT', 'Customer Service'].map(dept => {
+                    const count = employees.filter((e: any) => e.department === dept).length;
+                    const percentage = stats.totalEmployees > 0 ? (count / stats.totalEmployees) * 100 : 0;
+                    return (
+                      <div key={dept} className="space-y-1">
+                        <div className="flex justify-between text-sm">
+                          <span className="font-medium">{dept}</span>
+                          <span className="text-muted-foreground">{count} employees ({percentage.toFixed(0)}%)</span>
+                        </div>
+                        <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-primary transition-all" 
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Leave Statistics */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Leave Request Status</CardTitle>
+                  <CardDescription>Current leave request breakdown</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {['PENDING', 'APPROVED', 'REJECTED'].map(status => {
+                      const count = leaves.filter((l: any) => l.status === status).length;
+                      const color = status === 'PENDING' ? 'text-warning' : 
+                                   status === 'APPROVED' ? 'text-success' : 'text-destructive';
+                      return (
+                        <div key={status} className="flex justify-between items-center pb-2 border-b">
+                          <span className="font-medium">{status}</span>
+                          <span className={`text-2xl font-bold ${color}`}>{count}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Leave Types Distribution</CardTitle>
+                  <CardDescription>Breakdown by leave type</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {['ANNUAL', 'SICK', 'EMERGENCY', 'CASUAL'].map(type => {
+                      const count = leaves.filter((l: any) => l.leave_type === type).length;
+                      return (
+                        <div key={type} className="flex justify-between items-center pb-2 border-b">
+                          <span className="font-medium">{type}</span>
+                          <span className="text-2xl font-bold text-primary">{count}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Attendance & Performance Summary */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Attendance Overview</CardTitle>
+                  <CardDescription>Today's attendance status</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {['PRESENT', 'ABSENT', 'HALF_DAY', 'LATE'].map(status => {
+                      const count = attendance.filter((a: any) => a.status === status).length;
+                      const color = status === 'PRESENT' ? 'text-success' : 
+                                   status === 'ABSENT' ? 'text-destructive' : 'text-warning';
+                      return (
+                        <div key={status} className="flex justify-between items-center pb-2 border-b">
+                          <span className="font-medium">{status.replace('_', ' ')}</span>
+                          <span className={`text-2xl font-bold ${color}`}>{count}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Performance Ratings</CardTitle>
+                  <CardDescription>Employee performance distribution</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {[5, 4, 3, 2, 1].map(rating => {
+                      const count = performanceReviews.filter((r: any) => r.rating === rating).length;
+                      const avgRating = performanceReviews.length > 0 
+                        ? (performanceReviews.reduce((sum: number, r: any) => sum + r.rating, 0) / performanceReviews.length).toFixed(1)
+                        : 'N/A';
+                      return (
+                        <div key={rating} className="flex justify-between items-center pb-2 border-b">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{rating} Stars</span>
+                            <Award className="h-4 w-4 text-warning" />
+                          </div>
+                          <span className="text-2xl font-bold text-primary">{count}</span>
+                        </div>
+                      );
+                    })}
+                    <div className="pt-2 text-center">
+                      <p className="text-sm text-muted-foreground">Average Rating</p>
+                      <p className="text-3xl font-bold text-primary">
+                        {performanceReviews.length > 0 
+                          ? (performanceReviews.reduce((sum: number, r: any) => sum + r.rating, 0) / performanceReviews.length).toFixed(1)
+                          : 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Payroll Summary */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Payroll Summary</CardTitle>
+                <CardDescription>Current month payroll breakdown</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="space-y-1 p-4 bg-muted rounded-lg">
+                    <p className="text-sm text-muted-foreground">Total Base Salary</p>
+                    <p className="text-2xl font-bold text-primary">
+                      ${payroll.reduce((sum: number, r: any) => sum + (Number(r.base_salary) || 0), 0).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="space-y-1 p-4 bg-success/10 rounded-lg">
+                    <p className="text-sm text-muted-foreground">Total Allowances</p>
+                    <p className="text-2xl font-bold text-success">
+                      ${payroll.reduce((sum: number, r: any) => sum + (Number(r.allowances) || 0), 0).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="space-y-1 p-4 bg-destructive/10 rounded-lg">
+                    <p className="text-sm text-muted-foreground">Total Deductions</p>
+                    <p className="text-2xl font-bold text-destructive">
+                      ${payroll.reduce((sum: number, r: any) => sum + (Number(r.deductions) || 0), 0).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="space-y-1 p-4 bg-primary/10 rounded-lg">
+                    <p className="text-sm text-muted-foreground">Net Payroll</p>
+                    <p className="text-2xl font-bold text-primary">
+                      ${payroll.reduce((sum: number, r: any) => sum + (Number(r.net_salary) || 0), 0).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Employees Processed</span>
+                    <span className="font-medium">{payroll.length}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Pending Payments</span>
+                    <span className="font-medium text-warning">
+                      {payroll.filter((r: any) => r.status === 'PENDING').length}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Completed Payments</span>
+                    <span className="font-medium text-success">
+                      {payroll.filter((r: any) => r.status === 'PAID').length}
+                    </span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
