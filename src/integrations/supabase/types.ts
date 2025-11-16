@@ -14,7 +14,63 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      employees: {
+        Row: {
+          address: string
+          created_at: string
+          department: Database["public"]["Enums"]["department_type"]
+          email: string
+          emergency_contact: string
+          employee_id: string
+          first_name: string
+          id: string
+          join_date: string
+          last_name: string
+          manager_id: string | null
+          phone: string
+          position: string
+          salary: number
+          status: Database["public"]["Enums"]["employee_status"]
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          created_at?: string
+          department: Database["public"]["Enums"]["department_type"]
+          email: string
+          emergency_contact: string
+          employee_id: string
+          first_name: string
+          id?: string
+          join_date: string
+          last_name: string
+          manager_id?: string | null
+          phone: string
+          position: string
+          salary?: number
+          status?: Database["public"]["Enums"]["employee_status"]
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          department?: Database["public"]["Enums"]["department_type"]
+          email?: string
+          emergency_contact?: string
+          employee_id?: string
+          first_name?: string
+          id?: string
+          join_date?: string
+          last_name?: string
+          manager_id?: string | null
+          phone?: string
+          position?: string
+          salary?: number
+          status?: Database["public"]["Enums"]["employee_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +79,16 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      department_type:
+        | "Engineering"
+        | "HR"
+        | "Finance"
+        | "Marketing"
+        | "Operations"
+        | "Sales"
+        | "IT"
+        | "Customer Service"
+      employee_status: "ACTIVE" | "INACTIVE" | "ON_LEAVE" | "TERMINATED"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +215,18 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      department_type: [
+        "Engineering",
+        "HR",
+        "Finance",
+        "Marketing",
+        "Operations",
+        "Sales",
+        "IT",
+        "Customer Service",
+      ],
+      employee_status: ["ACTIVE", "INACTIVE", "ON_LEAVE", "TERMINATED"],
+    },
   },
 } as const
