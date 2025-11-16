@@ -18,13 +18,12 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const url = new URL(req.url);
-    const method = req.method;
+    const body = await req.json();
+    const { method, ...params } = body;
 
     // GET leave requests
     if (method === 'GET') {
-      const employeeId = url.searchParams.get('employeeId');
-      const status = url.searchParams.get('status');
+      const { employeeId, status } = params;
 
       let query = supabaseClient
         .from('leave_requests')
@@ -103,12 +102,11 @@ serve(async (req) => {
       );
     }
 
-    // PUT - Update leave request status
-    if (method === 'PUT') {
-      const body = await req.json();
-      const { leaveId, status, approverComments } = body;
+    // UPDATE_STATUS - Update leave request status
+    if (method === 'UPDATE_STATUS') {
+      const { id, status, approverComments } = params;
 
-      if (!leaveId) {
+      if (!id) {
         return new Response(
           JSON.stringify({ status: 'error', message: 'Leave ID is required' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -140,9 +138,35 @@ serve(async (req) => {
       );
     }
 
+    // UPDATE_STATUS - Update leave request status
+    if (method === 'UPDATE_STATUS') {
+      const { id, status } = params;
+
+      if (!id || !status) {
+        return new Response(
+          JSON.stringify({ status: 'error', message: 'ID and status are required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data, error } = await supabaseClient
+        .from('leave_requests')
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return new Response(
+        JSON.stringify({ status: 'success', data: { leave: data } }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     return new Response(
-      JSON.stringify({ status: 'error', message: 'Method not allowed' }),
-      { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ status: 'error', message: 'Invalid method' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {

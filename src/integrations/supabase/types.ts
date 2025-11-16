@@ -149,6 +149,108 @@ export type Database = {
         }
         Relationships: []
       }
+      payroll: {
+        Row: {
+          allowances: number | null
+          base_salary: number
+          created_at: string | null
+          deductions: number | null
+          department: string | null
+          employee_id: string
+          employee_name: string
+          id: string
+          month: number
+          net_salary: number
+          payment_date: string | null
+          position: string | null
+          present_days: number | null
+          status: string
+          tax: number | null
+          updated_at: string | null
+          year: number
+        }
+        Insert: {
+          allowances?: number | null
+          base_salary?: number
+          created_at?: string | null
+          deductions?: number | null
+          department?: string | null
+          employee_id: string
+          employee_name: string
+          id?: string
+          month: number
+          net_salary?: number
+          payment_date?: string | null
+          position?: string | null
+          present_days?: number | null
+          status?: string
+          tax?: number | null
+          updated_at?: string | null
+          year: number
+        }
+        Update: {
+          allowances?: number | null
+          base_salary?: number
+          created_at?: string | null
+          deductions?: number | null
+          department?: string | null
+          employee_id?: string
+          employee_name?: string
+          id?: string
+          month?: number
+          net_salary?: number
+          payment_date?: string | null
+          position?: string | null
+          present_days?: number | null
+          status?: string
+          tax?: number | null
+          updated_at?: string | null
+          year?: number
+        }
+        Relationships: []
+      }
+      performance_reviews: {
+        Row: {
+          created_at: string | null
+          employee_id: string
+          feedback: string | null
+          goals: Json | null
+          id: string
+          kpis: Json | null
+          rating: number
+          review_period: string
+          reviewer_id: string
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          employee_id: string
+          feedback?: string | null
+          goals?: Json | null
+          id?: string
+          kpis?: Json | null
+          rating: number
+          review_period: string
+          reviewer_id: string
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          employee_id?: string
+          feedback?: string | null
+          goals?: Json | null
+          id?: string
+          kpis?: Json | null
+          rating?: number
+          review_period?: string
+          reviewer_id?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
