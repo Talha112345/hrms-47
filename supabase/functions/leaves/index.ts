@@ -43,10 +43,9 @@ serve(async (req) => {
       );
     }
 
-    // POST - Create leave request
-    if (method === 'POST') {
-      const body = await req.json();
-      const { employeeId, leaveType, startDate, endDate, reason } = body;
+    // CREATE - Submit leave request
+    if (method === 'CREATE') {
+      const { employeeId, leaveType, startDate, endDate, reason } = params;
 
       // Validation
       const errors = [];
@@ -126,7 +125,7 @@ serve(async (req) => {
       const { data, error } = await supabaseClient
         .from('leave_requests')
         .update(updateData)
-        .eq('id', leaveId)
+        .eq('id', id)
         .select()
         .single();
 

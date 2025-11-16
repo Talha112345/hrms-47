@@ -18,17 +18,12 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const url = new URL(req.url);
-    const method = req.method;
+    const body = await req.json();
+    const { method, ...params } = body;
 
     // GET all employees or single employee
     if (method === 'GET') {
-      const employeeId = url.searchParams.get('employeeId');
-      const department = url.searchParams.get('department');
-      const status = url.searchParams.get('status');
-      const page = parseInt(url.searchParams.get('page') || '1');
-      const limit = parseInt(url.searchParams.get('limit') || '10');
-      const offset = (page - 1) * limit;
+      const { employeeId, department, status } = params;
 
       if (employeeId) {
         // Get single employee
@@ -49,14 +44,14 @@ serve(async (req) => {
       // Get all employees with filters
       let query = supabaseClient
         .from('employees')
-        .select('*', { count: 'exact' });
+        .select('*');
 
       if (department) query = query.eq('department', department);
       if (status) query = query.eq('status', status);
 
-      const { data, error, count } = await query
-        .range(offset, offset + limit - 1)
-        .order('created_at', { ascending: false });
+      const { data, error } = await query
+        .order('created_at', { ascending: false })
+        .limit(100);
 
       if (error) throw error;
 
@@ -64,13 +59,7 @@ serve(async (req) => {
         JSON.stringify({
           status: 'success',
           data: {
-            employees: data,
-            pagination: {
-              total: count,
-              page,
-              limit,
-              totalPages: Math.ceil((count || 0) / limit)
-            }
+            employees: data
           }
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -91,7 +80,7 @@ serve(async (req) => {
         joinDate,
         managerId,
         salary
-      } = body;
+      } = params;
 
       // Validation
       const errors = [];
@@ -150,8 +139,7 @@ serve(async (req) => {
 
     // PUT - Update employee
     if (method === 'PUT') {
-      const body = await req.json();
-      const { employeeId, ...updates } = body;
+      const { employeeId, ...updates } = params;
 
       if (!employeeId) {
         return new Response(
@@ -191,7 +179,7 @@ serve(async (req) => {
 
     // DELETE - Delete employee
     if (method === 'DELETE') {
-      const employeeId = url.searchParams.get('employeeId');
+      const { employeeId } = params;
 
       if (!employeeId) {
         return new Response(

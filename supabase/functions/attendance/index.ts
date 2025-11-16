@@ -45,7 +45,6 @@ serve(async (req) => {
 
     // POST - Mark attendance
     if (method === 'POST') {
-      const body = params;
       const { employeeId, date, status, checkIn, checkOut, notes } = params;
 
       // Validation
