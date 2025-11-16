@@ -142,7 +142,8 @@ const Dashboard = () => {
       department: formData.get("department"),
       position: formData.get("position"),
       joinDate: formData.get("joinDate"),
-      managerId: formData.get("managerId") || null
+      managerId: formData.get("managerId") || null,
+      salary: Number(formData.get("salary")) || 0
     };
 
     try {
@@ -445,6 +446,10 @@ const Dashboard = () => {
                     <div className="space-y-2">
                       <Label htmlFor="managerId">Manager ID (Optional)</Label>
                       <Input id="managerId" name="managerId" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="salary">Monthly Salary ($)</Label>
+                      <Input id="salary" name="salary" type="number" min="0" step="0.01" required />
                     </div>
                   </div>
                   <Button type="submit" className="w-full">Create Employee</Button>
