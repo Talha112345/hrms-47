@@ -18,13 +18,12 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const url = new URL(req.url);
-    const method = req.method;
+    const body = await req.json();
+    const { method, ...params } = body;
 
     // GET attendance records
     if (method === 'GET') {
-      const employeeId = url.searchParams.get('employeeId');
-      const date = url.searchParams.get('date');
+      const { employeeId, date } = params;
 
       let query = supabaseClient
         .from('attendance')
@@ -46,8 +45,8 @@ serve(async (req) => {
 
     // POST - Mark attendance
     if (method === 'POST') {
-      const body = await req.json();
-      const { employeeId, date, status, checkIn, checkOut, notes } = body;
+      const body = params;
+      const { employeeId, date, status, checkIn, checkOut, notes } = params;
 
       // Validation
       const errors = [];

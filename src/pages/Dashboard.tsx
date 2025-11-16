@@ -20,18 +20,22 @@ const Dashboard = () => {
   const [employees, setEmployees] = useState([]);
   const [leaves, setLeaves] = useState([]);
   const [attendance, setAttendance] = useState([]);
+  const [payroll, setPayroll] = useState([]);
+  const [performanceReviews, setPerformanceReviews] = useState([]);
 
   // Fetch dashboard stats
   useEffect(() => {
     fetchEmployees();
     fetchLeaveRequests();
     fetchAttendance();
+    fetchPayroll();
+    fetchPerformanceReviews();
   }, []);
 
   const fetchEmployees = async () => {
     try {
       const { data, error } = await supabase.functions.invoke('employees', {
-        method: 'GET'
+        body: { method: 'GET' }
       });
       
       if (error) throw error;
@@ -48,7 +52,7 @@ const Dashboard = () => {
   const fetchLeaveRequests = async () => {
     try {
       const { data, error } = await supabase.functions.invoke('leaves', {
-        method: 'GET'
+        body: { method: 'GET' }
       });
       
       if (error) throw error;
@@ -67,8 +71,7 @@ const Dashboard = () => {
     try {
       const today = new Date().toISOString().split('T')[0];
       const { data, error } = await supabase.functions.invoke('attendance', {
-        method: 'GET',
-        body: { date: today }
+        body: { method: 'GET', date: today }
       });
       
       if (error) throw error;
@@ -82,11 +85,47 @@ const Dashboard = () => {
     }
   };
 
+  const fetchPayroll = async () => {
+    try {
+      const currentMonth = new Date().getMonth() + 1;
+      const currentYear = new Date().getFullYear();
+      
+      const { data, error } = await supabase.functions.invoke('payroll', {
+        body: { method: 'GET', month: currentMonth, year: currentYear }
+      });
+      
+      if (error) throw error;
+      
+      if (data?.status === "success") {
+        setPayroll(data.data.payroll || []);
+      }
+    } catch (error) {
+      console.error("Error fetching payroll:", error);
+    }
+  };
+
+  const fetchPerformanceReviews = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('performance', {
+        body: { method: 'GET' }
+      });
+      
+      if (error) throw error;
+      
+      if (data?.status === "success") {
+        setPerformanceReviews(data.data.reviews || []);
+      }
+    } catch (error) {
+      console.error("Error fetching performance reviews:", error);
+    }
+  };
+
   const handleCreateEmployee = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     
     const payload = {
+      method: 'POST',
       firstName: formData.get("firstName"),
       lastName: formData.get("lastName"),
       email: formData.get("email"),
@@ -101,7 +140,6 @@ const Dashboard = () => {
 
     try {
       const { data, error } = await supabase.functions.invoke('employees', {
-        method: 'POST',
         body: payload
       });
       
@@ -125,6 +163,7 @@ const Dashboard = () => {
     const formData = new FormData(e.currentTarget);
     
     const payload = {
+      method: 'CREATE',
       employeeId: formData.get("employeeId"),
       leaveType: formData.get("leaveType"),
       startDate: formData.get("startDate"),
@@ -134,7 +173,6 @@ const Dashboard = () => {
 
     try {
       const { data, error } = await supabase.functions.invoke('leaves', {
-        method: 'POST',
         body: payload
       });
       
@@ -184,6 +222,87 @@ const Dashboard = () => {
     } catch (error: any) {
       console.error("Error marking attendance:", error);
       toast.error(error.message || "Error marking attendance");
+    }
+  };
+
+  const handleGeneratePayroll = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    
+    const month = Number(formData.get("month"));
+    const year = Number(formData.get("year"));
+
+    try {
+      const { data, error } = await supabase.functions.invoke('payroll', {
+        body: { method: 'GENERATE', month, year }
+      });
+      
+      if (error) throw error;
+      
+      if (data?.status === "success") {
+        toast.success(`Payroll generated for ${data.data.total} employees!`);
+        fetchPayroll();
+        (e.target as HTMLFormElement).reset();
+      } else {
+        toast.error(data?.message || "Failed to generate payroll");
+      }
+    } catch (error: any) {
+      console.error("Error generating payroll:", error);
+      toast.error(error.message || "Failed to generate payroll");
+    }
+  };
+
+  const handleApproveLeave = async (leaveId: string, status: 'APPROVED' | 'REJECTED') => {
+    try {
+      const { data, error } = await supabase.functions.invoke('leaves', {
+        body: { method: 'UPDATE_STATUS', id: leaveId, status }
+      });
+      
+      if (error) throw error;
+      
+      if (data?.status === "success") {
+        toast.success(`Leave request ${status.toLowerCase()}!`);
+        fetchLeaveRequests();
+      } else {
+        toast.error(data?.message || "Failed to update leave status");
+      }
+    } catch (error: any) {
+      console.error("Error updating leave:", error);
+      toast.error(error.message || "Failed to update leave status");
+    }
+  };
+
+  const handleCreatePerformanceReview = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    
+    const payload = {
+      employeeId: formData.get("employeeId"),
+      reviewerId: formData.get("reviewerId"),
+      reviewPeriod: formData.get("reviewPeriod"),
+      rating: Number(formData.get("rating")),
+      feedback: formData.get("feedback"),
+      goals: [],
+      kpis: []
+    };
+
+    try {
+      const { data, error } = await supabase.functions.invoke('performance', {
+        body: { method: 'CREATE', ...payload }
+      });
+      
+      if (error) throw error;
+      
+      if (data?.status === "success") {
+        toast.success("Performance review created successfully!");
+        fetchPerformanceReviews();
+        (e.target as HTMLFormElement).reset();
+      } else {
+        toast.error(data?.message || "Failed to create review");
+      }
+    } catch (error: any) {
+      console.error("Error creating review:", error);
+      toast.error(error.message || "Failed to create review");
     }
   };
 
@@ -250,11 +369,13 @@ const Dashboard = () => {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="employees" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="employees">Employees</TabsTrigger>
             <TabsTrigger value="leave">Leave</TabsTrigger>
             <TabsTrigger value="attendance">Attendance</TabsTrigger>
-            <TabsTrigger value="reports">Reports</TabsTrigger>
+            <TabsTrigger value="payroll">Payroll</TabsTrigger>
+            <TabsTrigger value="performance">Performance</TabsTrigger>
+            <TabsTrigger value="recruitment">Recruitment</TabsTrigger>
           </TabsList>
 
           {/* Employees Tab */}
@@ -422,12 +543,24 @@ const Dashboard = () => {
                               <p className="text-sm">{leave.start_date} to {leave.end_date}</p>
                               <p className="text-sm text-muted-foreground">{leave.reason}</p>
                             </div>
-                            <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              leave.status === 'PENDING' ? 'bg-warning/10 text-warning' :
-                              leave.status === 'APPROVED' ? 'bg-success/10 text-success' :
-                              'bg-destructive/10 text-destructive'
-                            }`}>
-                              {leave.status}
+                            <div className="flex flex-col gap-2 items-end">
+                              <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                leave.status === 'PENDING' ? 'bg-warning/10 text-warning' :
+                                leave.status === 'APPROVED' ? 'bg-success/10 text-success' :
+                                'bg-destructive/10 text-destructive'
+                              }`}>
+                                {leave.status}
+                              </div>
+                              {leave.status === 'PENDING' && (
+                                <div className="flex gap-2">
+                                  <Button size="sm" variant="default" onClick={() => handleApproveLeave(leave.id, 'APPROVED')}>
+                                    Approve
+                                  </Button>
+                                  <Button size="sm" variant="destructive" onClick={() => handleApproveLeave(leave.id, 'REJECTED')}>
+                                    Reject
+                                  </Button>
+                                </div>
+                              )}
                             </div>
                           </div>
                         </CardContent>
@@ -525,6 +658,199 @@ const Dashboard = () => {
                       ))}
                     </div>
                   )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Payroll Tab */}
+          <TabsContent value="payroll" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Generate Payroll</CardTitle>
+                <CardDescription>Generate monthly payroll for employees</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleGeneratePayroll} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="month">Month</Label>
+                      <Select name="month" required>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select month" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">January</SelectItem>
+                          <SelectItem value="2">February</SelectItem>
+                          <SelectItem value="3">March</SelectItem>
+                          <SelectItem value="4">April</SelectItem>
+                          <SelectItem value="5">May</SelectItem>
+                          <SelectItem value="6">June</SelectItem>
+                          <SelectItem value="7">July</SelectItem>
+                          <SelectItem value="8">August</SelectItem>
+                          <SelectItem value="9">September</SelectItem>
+                          <SelectItem value="10">October</SelectItem>
+                          <SelectItem value="11">November</SelectItem>
+                          <SelectItem value="12">December</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="year">Year</Label>
+                      <Input id="year" name="year" type="number" defaultValue={new Date().getFullYear()} required />
+                    </div>
+                  </div>
+                  <Button type="submit" className="w-full">Generate Payroll</Button>
+                </form>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Payroll Records</CardTitle>
+                <CardDescription>Current month payroll details</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {payroll.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-8">No payroll records found</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {payroll.map((record: any) => (
+                        <Card key={record.id} className="border-l-4 border-l-primary">
+                          <CardContent className="pt-4">
+                            <div className="space-y-2">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <p className="font-medium">{record.employee_name}</p>
+                                  <p className="text-sm text-muted-foreground">{record.position} - {record.department}</p>
+                                </div>
+                                <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                  record.status === 'PAID' ? 'bg-success/10 text-success' :
+                                  record.status === 'APPROVED' ? 'bg-primary/10 text-primary' :
+                                  'bg-warning/10 text-warning'
+                                }`}>
+                                  {record.status}
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                                <div>
+                                  <p className="text-muted-foreground">Base Salary</p>
+                                  <p className="font-medium">${Number(record.base_salary).toFixed(2)}</p>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground">Allowances</p>
+                                  <p className="font-medium text-success">+${Number(record.allowances).toFixed(2)}</p>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground">Deductions</p>
+                                  <p className="font-medium text-destructive">-${Number(record.deductions).toFixed(2)}</p>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground">Net Salary</p>
+                                  <p className="font-bold text-primary">${Number(record.net_salary).toFixed(2)}</p>
+                                </div>
+                              </div>
+                              <p className="text-xs text-muted-foreground">Present Days: {record.present_days} | Month: {record.month}/{record.year}</p>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Performance Tab */}
+          <TabsContent value="performance" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Create Performance Review</CardTitle>
+                <CardDescription>Evaluate employee performance and set KPIs</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleCreatePerformanceReview} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="perfEmployeeId">Employee ID</Label>
+                      <Input id="perfEmployeeId" name="employeeId" required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="reviewerId">Reviewer ID</Label>
+                      <Input id="reviewerId" name="reviewerId" required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="reviewPeriod">Review Period</Label>
+                      <Input id="reviewPeriod" name="reviewPeriod" placeholder="Q1 2024" required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="rating">Rating (1-5)</Label>
+                      <Input id="rating" name="rating" type="number" min="1" max="5" required />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="feedback">Feedback</Label>
+                      <Input id="feedback" name="feedback" required />
+                    </div>
+                  </div>
+                  <Button type="submit" className="w-full">Create Review</Button>
+                </form>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Performance Reviews</CardTitle>
+                <CardDescription>Recent employee performance evaluations</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {performanceReviews.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-8">No performance reviews found</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {performanceReviews.map((review: any) => (
+                        <Card key={review.id} className="border-l-4 border-l-accent">
+                          <CardContent className="pt-4">
+                            <div className="flex justify-between items-start">
+                              <div className="space-y-1">
+                                <p className="font-medium">Employee ID: {review.employee_id}</p>
+                                <p className="text-sm text-muted-foreground">Review Period: {review.review_period}</p>
+                                <p className="text-sm text-muted-foreground">Reviewer: {review.reviewer_id}</p>
+                                {review.feedback && <p className="text-sm mt-2">{review.feedback}</p>}
+                              </div>
+                              <div className="text-right">
+                                <div className="flex items-center gap-1">
+                                  <Award className="h-5 w-5 text-warning" />
+                                  <span className="text-2xl font-bold">{review.rating}/5</span>
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">{review.status}</p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Recruitment Tab */}
+          <TabsContent value="recruitment" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Recruitment Pipeline</CardTitle>
+                <CardDescription>Track job openings and candidate applications</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-12">
+                  <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Recruitment Module</h3>
+                  <p className="text-muted-foreground mb-4">Manage job postings, track candidates, and schedule interviews</p>
+                  <Button variant="outline">Coming Soon</Button>
                 </div>
               </CardContent>
             </Card>

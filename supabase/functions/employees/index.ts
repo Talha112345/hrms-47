@@ -79,7 +79,6 @@ serve(async (req) => {
 
     // POST - Create employee
     if (method === 'POST') {
-      const body = await req.json();
       const {
         firstName,
         lastName,
