@@ -128,6 +128,19 @@ serve(async (req) => {
 
       if (error) {
         console.error('Error creating employee:', error);
+        // Handle specific database errors
+        if (error.code === '23505') {
+          if (error.message.includes('email')) {
+            return new Response(
+              JSON.stringify({ status: 'error', message: 'An employee with this email already exists' }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          return new Response(
+            JSON.stringify({ status: 'error', message: 'This employee already exists' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
         throw error;
       }
 
@@ -206,10 +219,25 @@ serve(async (req) => {
       { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in employees function:', error);
+    
+    // Handle database constraint violations
+    if (error.code === '23505') {
+      if (error.message?.includes('email')) {
+        return new Response(
+          JSON.stringify({ status: 'error', message: 'An employee with this email already exists' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      return new Response(
+        JSON.stringify({ status: 'error', message: 'Duplicate entry detected' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
     return new Response(
-      JSON.stringify({ status: 'error', message: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ status: 'error', message: error.message || 'An unexpected error occurred' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
