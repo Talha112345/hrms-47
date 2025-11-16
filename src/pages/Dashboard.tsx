@@ -19,11 +19,13 @@ const Dashboard = () => {
 
   const [employees, setEmployees] = useState([]);
   const [leaves, setLeaves] = useState([]);
+  const [attendance, setAttendance] = useState([]);
 
   // Fetch dashboard stats
   useEffect(() => {
     fetchEmployees();
     fetchLeaveRequests();
+    fetchAttendance();
   }, []);
 
   const fetchEmployees = async () => {
@@ -45,11 +47,38 @@ const Dashboard = () => {
 
   const fetchLeaveRequests = async () => {
     try {
-      // Mock data for now - implement leave endpoint later
-      setLeaves([]);
-      setStats(prev => ({ ...prev, pendingLeaves: 0 }));
+      const { data, error } = await supabase.functions.invoke('leaves', {
+        method: 'GET'
+      });
+      
+      if (error) throw error;
+      
+      if (data?.status === "success") {
+        setLeaves(data.data.leaves || []);
+        const pending = data.data.leaves?.filter((l: any) => l.status === 'PENDING').length || 0;
+        setStats(prev => ({ ...prev, pendingLeaves: pending }));
+      }
     } catch (error) {
       console.error("Error fetching leaves:", error);
+    }
+  };
+
+  const fetchAttendance = async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const { data, error } = await supabase.functions.invoke('attendance', {
+        method: 'GET',
+        body: { date: today }
+      });
+      
+      if (error) throw error;
+      
+      if (data?.status === "success") {
+        setAttendance(data.data.attendance || []);
+        setStats(prev => ({ ...prev, todayAttendance: data.data.attendance?.length || 0 }));
+      }
+    } catch (error) {
+      console.error("Error fetching attendance:", error);
     }
   };
 
@@ -93,12 +122,69 @@ const Dashboard = () => {
 
   const handleLeaveRequest = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    toast.info("Leave management will be implemented soon");
+    const formData = new FormData(e.currentTarget);
+    
+    const payload = {
+      employeeId: formData.get("employeeId"),
+      leaveType: formData.get("leaveType"),
+      startDate: formData.get("startDate"),
+      endDate: formData.get("endDate"),
+      reason: formData.get("reason")
+    };
+
+    try {
+      const { data, error } = await supabase.functions.invoke('leaves', {
+        method: 'POST',
+        body: payload
+      });
+      
+      if (error) throw error;
+      
+      if (data?.status === "success") {
+        toast.success("Leave request submitted successfully!");
+        fetchLeaveRequests();
+        (e.target as HTMLFormElement).reset();
+      } else {
+        toast.error(data?.message || "Failed to submit leave request");
+      }
+    } catch (error: any) {
+      console.error("Error submitting leave:", error);
+      toast.error(error.message || "Error submitting leave request");
+    }
   };
 
   const handleAttendance = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    toast.info("Attendance tracking will be implemented soon");
+    const formData = new FormData(e.currentTarget);
+    
+    const payload = {
+      employeeId: formData.get("employeeId"),
+      date: formData.get("date"),
+      status: formData.get("status"),
+      checkIn: formData.get("checkIn") || null,
+      checkOut: formData.get("checkOut") || null,
+      notes: formData.get("notes") || null
+    };
+
+    try {
+      const { data, error } = await supabase.functions.invoke('attendance', {
+        method: 'POST',
+        body: payload
+      });
+      
+      if (error) throw error;
+      
+      if (data?.status === "success") {
+        toast.success("Attendance marked successfully!");
+        fetchAttendance();
+        (e.target as HTMLFormElement).reset();
+      } else {
+        toast.error(data?.message || "Failed to mark attendance");
+      }
+    } catch (error: any) {
+      console.error("Error marking attendance:", error);
+      toast.error(error.message || "Error marking attendance");
+    }
   };
 
   return (
@@ -250,13 +336,13 @@ const Dashboard = () => {
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {employees.map((emp: any) => (
-                        <Card key={emp._id} className="hover:shadow-md transition-shadow">
+                        <Card key={emp.id} className="hover:shadow-md transition-shadow">
                           <CardHeader className="pb-3">
-                            <CardTitle className="text-lg">{emp.firstName} {emp.lastName}</CardTitle>
+                            <CardTitle className="text-lg">{emp.first_name} {emp.last_name}</CardTitle>
                             <CardDescription>{emp.position}</CardDescription>
                           </CardHeader>
                           <CardContent className="text-sm space-y-1">
-                            <p><span className="font-medium">ID:</span> {emp.employeeId}</p>
+                            <p><span className="font-medium">ID:</span> {emp.employee_id}</p>
                             <p><span className="font-medium">Email:</span> {emp.email}</p>
                             <p><span className="font-medium">Department:</span> {emp.department}</p>
                             <p><span className="font-medium">Status:</span> <span className="text-success font-medium">{emp.status}</span></p>
@@ -306,10 +392,6 @@ const Dashboard = () => {
                       <Label htmlFor="endDate">End Date</Label>
                       <Input id="endDate" name="endDate" type="date" required />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="numberOfDays">Number of Days</Label>
-                      <Input id="numberOfDays" name="numberOfDays" type="number" required />
-                    </div>
                     <div className="space-y-2 md:col-span-2">
                       <Label htmlFor="reason">Reason</Label>
                       <Input id="reason" name="reason" required />
@@ -331,13 +413,13 @@ const Dashboard = () => {
                     <p className="text-muted-foreground text-center py-8">No leave requests found</p>
                   ) : (
                     leaves.map((leave: any) => (
-                      <Card key={leave._id} className="border-l-4" style={{ borderLeftColor: leave.status === 'PENDING' ? 'hsl(var(--warning))' : leave.status === 'APPROVED' ? 'hsl(var(--success))' : 'hsl(var(--destructive))' }}>
+                      <Card key={leave.id} className="border-l-4" style={{ borderLeftColor: leave.status === 'PENDING' ? 'hsl(var(--warning))' : leave.status === 'APPROVED' ? 'hsl(var(--success))' : 'hsl(var(--destructive))' }}>
                         <CardContent className="pt-4">
                           <div className="flex justify-between items-start">
                             <div className="space-y-1">
-                              <p className="font-medium">{leave.employeeName}</p>
-                              <p className="text-sm text-muted-foreground">{leave.leaveType} - {leave.numberOfDays} days</p>
-                              <p className="text-sm">{leave.startDate} to {leave.endDate}</p>
+                              <p className="font-medium">Employee ID: {leave.employee_id}</p>
+                              <p className="text-sm text-muted-foreground">{leave.leave_type} - {leave.number_of_days} days</p>
+                              <p className="text-sm">{leave.start_date} to {leave.end_date}</p>
                               <p className="text-sm text-muted-foreground">{leave.reason}</p>
                             </div>
                             <div className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -376,16 +458,74 @@ const Dashboard = () => {
                       <Input id="date" name="date" type="date" required />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="checkInTime">Check-in Time</Label>
-                      <Input id="checkInTime" name="checkInTime" type="time" required />
+                      <Label htmlFor="status">Status</Label>
+                      <Select name="status" required>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="PRESENT">Present</SelectItem>
+                          <SelectItem value="ABSENT">Absent</SelectItem>
+                          <SelectItem value="HALF_DAY">Half Day</SelectItem>
+                          <SelectItem value="LATE">Late</SelectItem>
+                          <SelectItem value="LEAVE">Leave</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="location">Location</Label>
-                      <Input id="location" name="location" required />
+                      <Label htmlFor="checkIn">Check-in Time (Optional)</Label>
+                      <Input id="checkIn" name="checkIn" type="time" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="checkOut">Check-out Time (Optional)</Label>
+                      <Input id="checkOut" name="checkOut" type="time" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="notes">Notes (Optional)</Label>
+                      <Input id="notes" name="notes" />
                     </div>
                   </div>
                   <Button type="submit" className="w-full">Record Attendance</Button>
                 </form>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Today's Attendance</CardTitle>
+                <CardDescription>Attendance records for today</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {attendance.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-8">No attendance records found</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {attendance.map((record: any) => (
+                        <Card key={record.id} className="border-l-4" style={{ borderLeftColor: record.status === 'PRESENT' ? 'hsl(var(--success))' : record.status === 'ABSENT' ? 'hsl(var(--destructive))' : 'hsl(var(--warning))' }}>
+                          <CardContent className="pt-4">
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <p className="font-medium">Employee ID: {record.employee_id}</p>
+                                <p className="text-sm text-muted-foreground">Date: {record.date}</p>
+                                {record.check_in && <p className="text-sm">Check-in: {record.check_in}</p>}
+                                {record.check_out && <p className="text-sm">Check-out: {record.check_out}</p>}
+                                {record.notes && <p className="text-sm text-muted-foreground mt-1">{record.notes}</p>}
+                              </div>
+                              <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                record.status === 'PRESENT' ? 'bg-success/10 text-success' :
+                                record.status === 'ABSENT' ? 'bg-destructive/10 text-destructive' :
+                                'bg-warning/10 text-warning'
+                              }`}>
+                                {record.status}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
