@@ -7,8 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Users, Calendar, Clock, DollarSign, TrendingUp, Award } from "lucide-react";
-
-const API_BASE = "http://localhost:3000/api/v1";
+import { supabase } from "@/integrations/supabase/client";
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -29,9 +28,13 @@ const Dashboard = () => {
 
   const fetchEmployees = async () => {
     try {
-      const res = await fetch(`${API_BASE}/employees`);
-      const data = await res.json();
-      if (data.status === "success") {
+      const { data, error } = await supabase.functions.invoke('employees', {
+        method: 'GET'
+      });
+      
+      if (error) throw error;
+      
+      if (data?.status === "success") {
         setEmployees(data.data.employees || []);
         setStats(prev => ({ ...prev, totalEmployees: data.data.employees?.length || 0 }));
       }
@@ -42,13 +45,9 @@ const Dashboard = () => {
 
   const fetchLeaveRequests = async () => {
     try {
-      const res = await fetch(`${API_BASE}/leave/requests`);
-      const data = await res.json();
-      if (data.status === "success") {
-        setLeaves(data.data.requests || []);
-        const pending = data.data.requests?.filter((l: any) => l.status === "PENDING").length || 0;
-        setStats(prev => ({ ...prev, pendingLeaves: pending }));
-      }
+      // Mock data for now - implement leave endpoint later
+      setLeaves([]);
+      setStats(prev => ({ ...prev, pendingLeaves: 0 }));
     } catch (error) {
       console.error("Error fetching leaves:", error);
     }
@@ -72,86 +71,34 @@ const Dashboard = () => {
     };
 
     try {
-      const res = await fetch(`${API_BASE}/employees`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+      const { data, error } = await supabase.functions.invoke('employees', {
+        method: 'POST',
+        body: payload
       });
-      const data = await res.json();
       
-      if (data.status === "success") {
+      if (error) throw error;
+      
+      if (data?.status === "success") {
         toast.success("Employee created successfully!");
         fetchEmployees();
         (e.target as HTMLFormElement).reset();
       } else {
-        toast.error(data.message || "Failed to create employee");
+        toast.error(data?.message || "Failed to create employee");
       }
-    } catch (error) {
-      toast.error("Error creating employee");
+    } catch (error: any) {
+      console.error("Error creating employee:", error);
+      toast.error(error.message || "Error creating employee");
     }
   };
 
   const handleLeaveRequest = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    
-    const payload = {
-      employeeId: formData.get("employeeId"),
-      leaveType: formData.get("leaveType"),
-      startDate: formData.get("startDate"),
-      endDate: formData.get("endDate"),
-      numberOfDays: parseInt(formData.get("numberOfDays") as string),
-      reason: formData.get("reason")
-    };
-
-    try {
-      const res = await fetch(`${API_BASE}/leave/requests`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      
-      if (data.status === "success") {
-        toast.success("Leave request submitted!");
-        fetchLeaveRequests();
-        (e.target as HTMLFormElement).reset();
-      } else {
-        toast.error(data.message || "Failed to submit leave request");
-      }
-    } catch (error) {
-      toast.error("Error submitting leave request");
-    }
+    toast.info("Leave management will be implemented soon");
   };
 
   const handleAttendance = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    
-    const payload = {
-      employeeId: formData.get("employeeId"),
-      date: formData.get("date"),
-      checkInTime: formData.get("checkInTime"),
-      location: formData.get("location")
-    };
-
-    try {
-      const res = await fetch(`${API_BASE}/attendance/checkin`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      
-      if (data.status === "success") {
-        toast.success("Attendance recorded!");
-        (e.target as HTMLFormElement).reset();
-      } else {
-        toast.error(data.message || "Failed to record attendance");
-      }
-    } catch (error) {
-      toast.error("Error recording attendance");
-    }
+    toast.info("Attendance tracking will be implemented soon");
   };
 
   return (
